@@ -31,4 +31,4 @@ The project aims to analyze the given dataset in a real-world setting and experi
 ## Conclusion
 The data analysis project utilized algebraic and geometric methods to explore relationships between variables in the lung cancer prediction dataset. Various statistical tests, Bayesian network modeling, linear regression, and goodness of fit tests were performed. The results and findings are detailed in the report, providing insights into the dataset and facilitating informed decision-making based on the analysis.
 
-For detailed code and analysis, please refer to the Jupyter Notebook provided in this repository.
+For detailed code and analysis, please refer to the R markdown provided in this repository.
