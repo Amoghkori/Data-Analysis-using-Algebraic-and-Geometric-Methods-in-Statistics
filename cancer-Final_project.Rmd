@@ -1,0 +1,1081 @@
+---
+title: "Lung Cancer prediction AGM project"
+author: "Rahul Bharadwaj Machiraju"
+date: "2023-04-04"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+cancer_df <- read_csv("C:\\Users\\koria\\OneDrive\\Documents\\RYouWithMe\\data\\cancer patient data sets.csv")
+str(cancer_df)
+```
+
+```{r}
+summary(cancer_df)
+```
+
+```{r}
+lapply(cancer_df,function(x) { length(which(is.na(x)))})
+View(cancer_df)
+```
+
+```{r}
+cancer_df = cancer_df[,-1]
+```
+
+```{r}
+cancer_df = cancer_df[,-1]
+View(cancer_df)
+```
+
+```{r}
+library(dplyr)
+df = cancer_df %>% mutate(Level=recode(Level, 
+                             'Low' = 1,
+             'Medium'= 2, 
+             'High'= 3, 
+             ))
+View(df)
+str(df)
+```
+
+
+#Correlation plot
+
+```{r}
+cor_df = cor(df)
+level_values = cor_df[,"Level"]
+level_values
+```
+
+```{r}
+library('corrplot')
+corrplot(cor_df)Some notable observations from the correlation matrix are:
+
+There are both positive and negative correlations between different variables.
+Some variables such as dust allergy, occupational hazards, genetic risk, and chronic lung disease are highly positively correlated with each other, which indicates that they may share similar underlying factors or causes.
+Some symptoms such as fatigue, chest pain, coughing of blood, and weight loss are strongly correlated with obesity, which suggests that obesity may be a risk factor or a potential cause for these symptoms.
+The correlations provide insight into the relationship between different variables, but further analysis is needed to establish causation or to build predictive models.
+```
+
+
+```{r}
+df_new_greater_than_0.5 <- df[, abs(cor_df[,"Level"]) >= 0.5]
+```
+
+```{r}
+library(bnlearn)
+ci <- ci.test(df_new_greater_than_0.5)
+ci
+```
+
+
+```{r}
+ci <- ci.test(df)
+ci
+```
+
+```{r}
+ci.test(x = "Level" , y = "Age", z = c("Gender", "Smoking"), data = df)
+```
+
+
+
+
+
+#ANOVA Analysis
+```{r}
+#install.packages('tidyverse')
+#install.packages('ggplot2')
+#library(ggplot2)
+#library(ggpubr)
+#library(tidyverse)
+#library(broom)
+#library(AICcmodavg)
+```
+
+
+```{r}
+two.way <- aov(Level ~ ., data = df)
+```
+
+```{r}
+summary(two.way)
+```
+
+
+```{r}
+plot(two.way)
+```
+
+```{r}
+df_anova <- subset(df, select = -c(Smoking, `OccuPational Hazards`))
+```
+
+```{r}
+df_anova
+```
+
+
+
+
+#Graphical model
+
+
+```{r}
+#install.packages('bnlearn')
+library(bnlearn)
+df.net <- hc(df)
+print(df.net)
+
+```
+
+
+```{r}
+parameters <- bn.fit(df.net,df)
+```
+
+
+
+```{r}
+class(df.net)
+```
+
+
+
+```{r}
+fitted_data <- fitted(parameters)
+#head(fitted_data)
+```
+
+
+
+
+```{r}
+#install.packages('flexmix')
+library(flexmix)
+bic_score <- BIC(parameters,df)
+```
+
+
+
+```{r}
+bic_score
+```
+
+```{r}
+parameters$Level
+
+```
+
+```{r}
+a = c("Gender" , "`Air Pollution`" , "`Alcohol use`" ,"`OccuPational Hazards`" ,"`Genetic Risk`" ,"Obesity" ,"Wheezing", "`Swallowing Difficulty`","Snoring")
+```
+
+
+```{r}
+a
+```
+
+
+```{r}
+score_func <- function(data, model) {
+  score <- bic(model, data)
+  if (get.target(model) != "Level") {
+    score <- score + 100
+  }
+  score
+}
+```
+
+```{r}
+#bde_scores <- score(hc_net, type = "bde")
+```
+
+```{r}
+plot(df.net)
+```
+
+```{r}
+#install.packages("igraph")
+library(igraph)
+# Convert the learned bnlearn network to an igraph object
+igraph_net <- bnlearn::as.igraph(df.net)
+# Set the layout for the graph
+layout <- layout_with_kk(igraph_net)
+
+# Customize the plot using igraph
+plot.igraph(
+  igraph_net,
+  vertex.size = 20,
+  vertex.label.cex = 0.8,
+  vertex.color = "lightblue",
+  edge.arrow.size = 0.5,
+  edge.curved = 0.2,
+  layout = layout_with_fr(igraph_net)
+)
+```
+
+
+```{r}
+#install.packages("BiocManager")
+#BiocManager::install("Rgraphviz")
+```
+
+
+
+```{r}
+#install.packages('Rgraphviz')
+graphviz.plot(parameters,layout = 'dot')
+```
+
+
+# Graphical Model - ANOVA
+
+
+
+```{r}
+#install.packages('bnlearn')
+library(bnlearn)
+df.net_anova <- hc(df_anova)
+print(df.net_anova)
+
+```
+
+
+```{r}
+parameters <- bn.fit(df.net_anova,df_anova)
+```
+
+
+
+```{r}
+class(df.net_anova)
+```
+
+
+
+```{r}
+fitted_data <- fitted(parameters)
+#head(fitted_data)
+```
+
+
+
+
+```{r}
+#install.packages('flexmix')
+library(flexmix)
+bic_score <- BIC(parameters,df_anova)
+```
+
+
+
+```{r}
+bic_score
+```
+
+```{r}
+parameters$Level
+
+```
+
+```{r}
+an = c("Age" ,"Gender" , "`Air Pollution`", "`Genetic Risk`", "`Balanced Diet`" , "Obesity" , "`Passive Smoker`" , "`Chest Pain`" , "Wheezing" , "`Swallowing Difficulty`" , "Snoring")
+```
+
+
+```{r}
+an
+```
+
+
+```{r}
+score_func <- function(data, model) {
+  score <- bic(model, data)
+  if (get.target(model) != "Level") {
+    score <- score + 100
+  }
+  score
+}
+```
+
+```{r}
+#bde_scores <- score(hc_net, type = "bde")
+```
+
+```{r}
+plot(df.net_anova)
+```
+
+```{r}
+#install.packages("igraph")
+library(igraph)
+# Convert the learned bnlearn network to an igraph object
+igraph_net <- bnlearn::as.igraph(df.net_anova)
+# Set the layout for the graph
+layout <- layout_with_kk(igraph_net)
+
+# Customize the plot using igraph
+plot.igraph(
+  igraph_net,
+  vertex.size = 20,
+  vertex.label.cex = 0.8,
+  vertex.color = "lightblue",
+  edge.arrow.size = 0.5,
+  edge.curved = 0.2,
+  layout = layout_with_fr(igraph_net)
+)
+```
+
+
+```{r}
+#install.packages("BiocManager")
+#BiocManager::install("Rgraphviz")
+```
+
+
+
+```{r}
+#install.packages('Rgraphviz')
+graphviz.plot(parameters,layout = 'dot')
+```
+
+
+
+
+
+# Marginalization of unnecessary variables - Correlation
+
+```{r}
+selected_cols <- colnames(df)[which(abs(cor_df[,"Level"]) < 0.3)]
+selected_cols
+```
+
+```{r}
+df_marginal_1 = df
+```
+
+
+```{r}
+
+# marginalize the features
+for (f in selected_cols) {
+  df_marginal_1[[f]] <- ave(df[[f]], FUN = function(x) mean(x))
+}
+
+```
+
+
+
+```{r}
+View(df_marginal_1)
+```
+
+
+
+# Marginalization of unnecessary Variables - ( ANOVA )
+
+```{r}
+selected_cols <- c("Smoking", "OccuPational Hazards")
+selected_cols
+```
+
+```{r}
+df_marginal_anova = df
+```
+
+
+```{r}
+
+# marginalize the features
+for (f in selected_cols) {
+  df_marginal_anova[[f]] <- ave(df[[f]], FUN = function(x) mean(x))
+}
+
+```
+
+
+
+```{r}
+View(df_marginal_anova)
+```
+
+
+
+# Graphical model after Marginalization
+
+
+```{r}
+#install.packages('bnlearn')
+library(bnlearn)
+df.net_1 <- hc(df_marginal_1)
+print(df.net_1)
+
+```
+
+
+```{r}
+parameters_1 <- bn.fit(df.net_1,df_marginal_1)
+```
+
+
+
+```{r}
+class(df.net_1)
+```
+
+
+
+```{r}
+fitted_data <- fitted(parameters_1)
+
+```
+
+
+
+
+```{r}
+#install.packages('flexmix')
+library(flexmix)
+bic_score <- BIC(parameters_1,df_marginal_1)
+```
+
+
+
+```{r}
+bic_score
+```
+
+```{r}
+parameters_1$Level
+```
+
+```{r}
+b = c("`Alcohol use`","`OccuPational Hazards`","Obesity")
+```
+
+
+```{r}
+b
+```
+
+
+```{r}
+score_func <- function(data, model) {
+  score <- bic(model, data)
+  if (get.target(model) != "Level") {
+    score <- score + 100
+  }
+  score
+}
+```
+
+```{r}
+#bde_scores <- score(df.net,df, type = "bde")
+```
+
+```{r}
+plot(df.net_1)
+```
+
+```{r}
+#install.packages("igraph")
+library(igraph)
+# Convert the learned bnlearn network to an igraph object
+igraph_net <- bnlearn::as.igraph(df.net_1)
+# Set the layout for the graph
+layout <- layout_with_kk(igraph_net)
+
+# Customize the plot using igraph
+plot.igraph(
+  igraph_net,
+  vertex.size = 20,
+  vertex.label.cex = 0.8,
+  vertex.color = "lightblue",
+  edge.arrow.size = 0.5,
+  edge.curved = 0.2,
+  layout = layout_with_fr(igraph_net)
+)
+```
+
+```{r}
+graphviz.plot(parameters,layout = 'dot')
+```
+
+
+#Graphical Model After Marginalization - ANOVA
+
+```{r}
+#install.packages('bnlearn')
+library(bnlearn)
+df.net_anova_1 <- hc(df_marginal_anova)
+print(df.net_anova_1)
+
+```
+
+
+```{r}
+parameters_anova <- bn.fit(df.net_anova_1,df_marginal_anova)
+```
+
+
+
+```{r}
+class(df.net_anova_1)
+```
+
+
+
+```{r}
+fitted_data <- fitted(parameters_anova)
+
+```
+
+
+
+
+```{r}
+#install.packages('flexmix')
+library(flexmix)
+bic_score <- BIC(parameters_anova,df_marginal_anova)
+```
+
+
+
+```{r}
+bic_score
+```
+
+```{r}
+parameters_anova$Level
+```
+
+```{r}
+#b = c("`Alcohol use`","`OccuPational Hazards`","Obesity")
+```
+
+
+```{r}
+#b
+```
+
+
+```{r}
+score_func <- function(data, model) {
+  score <- bic(model, data)
+  if (get.target(model) != "Level") {
+    score <- score + 100
+  }
+  score
+}
+```
+
+```{r}
+#bde_scores <- score(df.net,df, type = "bde")
+```
+
+```{r}
+plot(df.net_anova_1)
+```
+
+```{r}
+#install.packages("igraph")
+library(igraph)
+# Convert the learned bnlearn network to an igraph object
+igraph_net <- bnlearn::as.igraph(df.net_anova_1)
+# Set the layout for the graph
+layout <- layout_with_kk(igraph_net)
+
+# Customize the plot using igraph
+plot.igraph(
+  igraph_net,
+  vertex.size = 20,
+  vertex.label.cex = 0.8,
+  vertex.color = "lightblue",
+  edge.arrow.size = 0.5,
+  edge.curved = 0.2,
+  layout = layout_with_fr(igraph_net)
+)
+```
+
+```{r}
+graphviz.plot(parameters_anova,layout = 'dot')
+```
+
+
+
+
+
+
+
+
+********************************************************************************************************************************
+
+
+# Data Splitting -1 (normal data)
+
+```{r}
+library(e1071)
+library(caTools)
+library(class)
+
+
+set.seed(1)
+#df$Level = as.numeric(df$Level)
+
+index = round(nrow(df)*0.2,digits=0)
+
+test.indices = sample(1:nrow(df), index)
+
+#80% training set
+train=df[-test.indices,] 
+#20% test set
+test=df[test.indices,]
+```
+
+
+```{r}
+new_model = bn.fit(df.net,train)
+```
+
+
+```{r}
+predictions <- predict(new_model,node = "Level" ,test,method = "bayes-lw")
+```
+
+```{r}
+predictions
+```
+
+```{r}
+test$Level
+```
+
+```{r}
+actual_values <- test$Level
+rmse <- sqrt(mean((predictions - actual_values)^2))
+```
+
+```{r}
+print(rmse)
+```
+
+```{r}
+class(predictions)
+
+class(test$Level)
+```
+
+
+# Data Splitting - 2 ( Marginalized data)
+
+```{r}
+library(e1071)
+library(caTools)
+library(class)
+
+
+set.seed(1)
+#df$Level = as.numeric(df$Level)
+
+index = round(nrow(df_marginal_1)*0.2,digits=0)
+
+test.indices = sample(1:nrow(df_marginal_1), index)
+
+#80% training set
+train_Marginal=df_marginal_1[-test.indices,] 
+#20% test set
+test_Marginal=df_marginal_1[test.indices,]
+```
+
+
+```{r}
+new_model_Marginal = bn.fit(df.net_1,train_Marginal)
+```
+
+
+```{r}
+predictions_Marginal <- predict(new_model_Marginal,node = "Level" ,test_Marginal,method = "bayes-lw")
+```
+
+```{r}
+predictions_Marginal
+```
+```{r}
+test_Marginal$Level
+```
+
+
+```{r}
+actual_values <- test_Marginal$Level
+rmse <- sqrt(mean((predictions_Marginal - actual_values)^2))
+```
+
+```{r}
+print(rmse)
+```
+
+```{r}
+class(predictions)
+
+class(test_Marginal$Level)
+```
+#Data Splitting -3 Anova
+
+```{r}
+library(e1071)
+library(caTools)
+library(class)
+
+
+set.seed(1)
+#df$Level = as.numeric(df$Level)
+
+index = round(nrow(df_anova)*0.2,digits=0)
+
+test.indices = sample(1:nrow(df_anova), index)
+
+#80% training set
+train_anova=df_anova[-test.indices,] 
+#20% test set
+test_anova=df_anova[test.indices,]
+```
+
+
+```{r}
+new_model_anova = bn.fit(df.net_anova,train_anova)
+```
+
+
+```{r}
+predictions_anova <- predict(new_model_anova,node = "Level" ,test_anova,method = "bayes-lw")
+```
+
+```{r}
+predictions_anova
+```
+
+```{r}
+test_anova$Level
+```
+
+
+```{r}
+actual_values <- test_anova$Level
+rmse <- sqrt(mean((predictions_anova - actual_values)^2))
+```
+
+```{r}
+print(rmse)
+```
+
+```{r}
+class(predictions)
+
+class(test_Marginal$Level)
+```
+```{r}
+library('dplyr')
+#Select the training set except the DV
+YTrain = train$Level
+XTrain = train %>% select(-Level)
+# Select the test set except the DV
+YTest = test$Level
+XTest = test %>% select(-Level)
+
+```
+
+
+```{r}
+library('dplyr')
+#Select the training set except the DV
+YTrain_Marginal = train_Marginal$Level
+XTrain_Marginal = train_Marginal %>% select(-Level)
+# Select the test set except the DV
+YTest_Marginal = test_Marginal$Level
+XTest_Marginal = test_Marginal %>% select(-Level)
+
+```
+
+
+```{r}
+library('dplyr')
+#Select the training set except the DV
+YTrain_anova = train_anova$Level
+XTrain_anova = train_anova %>% select(-Level)
+# Select the test set except the DV
+YTest_anova = test_anova$Level
+XTest_anova = test_anova %>% select(-Level)
+
+```
+
+
+********************************************************************************************************************************
+
+
+
+# BIC Scores
+```{r}
+score(df.net,train)
+score(df.net,test)
+```
+
+```{r}
+score(df.net_1,train_Marginal)
+score(df.net_1,test_Marginal)
+```
+
+
+```{r}
+score(df.net_anova,train_anova)
+score(df.net_anova,test_anova)
+```
+
+
+********************************************************************************************************************************
+
+
+#Linear Model -1 ( Original Data)
+
+
+```{r}
+linear_model = lm(Level~.,data = train)
+linear_model
+```
+
+```{r}
+summary(linear_model)
+```
+
+```{r}
+test$Level
+```
+
+```{r}
+predicted_data = predict(linear_model,test, type = "response")
+table(predicted_data)
+table(test$Level)
+```
+
+```{r}
+actual_values <- test$Level
+rmse <- sqrt(mean((predicted_data - actual_values)^2))
+print(rmse)
+```
+
+# Linear Model -2 (Marginalized Data)
+
+
+```{r}
+linear_model_2 = lm(Level~.,data = train_Marginal)
+linear_model_2
+```
+
+```{r}
+summary(linear_model_2)
+```
+
+```{r}
+test_Marginal$Level
+```
+
+```{r}
+predicted_data = predict(linear_model_2,test_Marginal, type = "response")
+table(predicted_data)
+table(test_Marginal$Level)
+```
+
+```{r}
+actual_values <- test_Marginal$Level
+rmse <- sqrt(mean((predicted_data - actual_values)^2))
+print(rmse)
+```
+
+
+#Linear Model -3 ( ANOVA)
+
+
+```{r}
+linear_model = lm(Level~.,data = train_anova)
+linear_model
+```
+
+```{r}
+summary(linear_model)
+```
+
+```{r}
+test_anova$Level
+```
+
+```{r}
+predicted_data = predict(linear_model,test_anova, type = "response")
+table(predicted_data)
+table(test_anova$Level)
+```
+
+```{r}
+actual_values <- test_anova$Level
+rmse <- sqrt(mean((predicted_data - actual_values)^2))
+print(rmse)
+```
+
+
+# New Linear Model from hc -1 ( original Data)
+
+```{r}
+colnames(train)
+```
+
+```{r}
+a
+```
+
+
+```{r}
+formula <- formula(paste("Level ~", paste(a, collapse = " + ")))
+```
+
+```{r}
+formula
+```
+
+```{r}
+linear_model = lm(formula = formula,data = train)
+linear_model
+```
+
+```{r}
+summary(linear_model)
+```
+
+```{r}
+test$Level
+```
+
+```{r}
+predicted_data = predict(linear_model,test, type = "response")
+table(predicted_data)
+table(test$Level)
+```
+
+```{r}
+test$Level
+```
+
+```{r}
+actual_values <- test$Level
+rmse <- sqrt(mean((predicted_data - actual_values)^2))
+print(rmse)
+```
+
+
+
+# New Linear Model from hc-2 (marginalized Data)
+
+```{r}
+colnames(train_Marginal)
+```
+
+```{r}
+b
+```
+
+
+```{r}
+formula <- formula(paste("Level ~", paste(b, collapse = " + ")))
+```
+
+```{r}
+formula
+```
+
+```{r}
+linear_model = lm(formula = formula,data = train_Marginal)
+linear_model
+```
+
+```{r}
+summary(linear_model)
+```
+
+```{r}
+test_Marginal$Level
+```
+
+```{r}
+predicted_data = predict(linear_model,test_Marginal, type = "response")
+table(predicted_data)
+table(test_Marginal$Level)
+```
+
+
+
+
+```{r}
+actual_values <- test_Marginal$Level
+rmse <- sqrt(mean((predicted_data - actual_values)^2))
+print(rmse)
+```
+
+
+*******************************************************************************************************************************
+
+
+```{r}
+#install.packages('rms')
+#install.packages('Hmisc')
+#library('Hmisc')
+#library('rms')
+
+```
+
+# Gaussian Model
+
+```{r}
+gauss_model <- glm(Level~., data = df, family = gaussian(link = "identity"))
+gauss_model
+summary(gauss_model)
+```
+
+
+```{r}
+predicted_data = predict(gauss_model,test, type = "response")
+
+```
+
+
+```{r}
+actual_values <- test$Level
+rmse <- sqrt(mean((predicted_data - actual_values)^2))
+print(rmse)
+```
+
+
+
+# Gaussian Model - 2 ( Anova )
+
+```{r}
+gauss_model <- glm(Level~., data = df_anova, family = gaussian(link = "identity"))
+gauss_model
+summary(gauss_model)
+```
+
+
+```{r}
+predicted_data = predict(gauss_model,test_anova, type = "response")
+
+```
+
+
+```{r}
+actual_values <- test_anova$Level
+rmse <- sqrt(mean((predicted_data - actual_values)^2))
+print(rmse)
+```
